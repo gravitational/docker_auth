@@ -17,9 +17,6 @@
 package authn
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/golang/glog"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -51,21 +48,13 @@ func NewDBAuth(config *DBAuthConfig) (*dbAuth, error) {
 	}, nil
 }
 
-func (d *dbAuth) Authenticate(user string, password PasswordString) (bool, error) {
-	users := []User{}
-	if err := d.db.Select(&users, fmt.Sprintf("SELECT * FROM users where account=%s", user)); err != nil {
+func (d *dbAuth) Authenticate(account string, password PasswordString) (bool, error) {
+	var user User
+	if err := d.db.Get(&user, "SELECT * FROM users where account=$1", account); err != nil {
 		return false, err
 	}
 
-	if len(users) == 0 {
-		return false, NoMatch
-	}
-
-	if len(users) > 1 {
-		return false, errors.New("Integrity error: there are more than one users with this username")
-	}
-
-	if bcrypt.CompareHashAndPassword([]byte(users[0].Password), []byte(password)) != nil {
+	if bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)) != nil {
 		return false, nil
 	}
 

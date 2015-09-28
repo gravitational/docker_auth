@@ -70,7 +70,7 @@ func validate(c *Config) error {
 		return fmt.Errorf("expiration must be positive, got %d", c.Token.Expiration)
 	}
 
-	if c.Users == nil && c.GoogleAuth == nil {
+	if c.Users == nil && c.GoogleAuth == nil && c.DBAuth == nil {
 		return errors.New("no auth methods are configured, this is probably a mistake. Use an empty user map if you really want to deny everyone.")
 	}
 	if gac := c.GoogleAuth; gac != nil {

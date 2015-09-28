@@ -7,7 +7,7 @@ update-deps:
 
 build:
 	go generate ./...
-	go build
+	go build -a
 
 docker-build: update-deps build
 	docker build -t cesanta/docker_auth -f Dockerfile .
