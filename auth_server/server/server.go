@@ -66,6 +66,13 @@ func NewAuthServer(c *Config) (*AuthServer, error) {
 		as.authenticators = append(as.authenticators, ga)
 		as.ga = ga
 	}
+	if c.DBAuth != nil {
+		da, err := authn.NewDBAuth(c.DBAuth)
+		if err != nil {
+			return nil, err
+		}
+		as.authenticators = append(as.authenticators, da)
+	}
 	return as, nil
 }
 
