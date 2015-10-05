@@ -29,7 +29,7 @@ type DBAuthConfig struct {
 }
 
 type dbAuth struct {
-	db *sqlx.DB
+	config *DBAuthConfig
 }
 
 type User struct {
@@ -38,19 +38,19 @@ type User struct {
 }
 
 func NewDBAuth(config *DBAuthConfig) (*dbAuth, error) {
-	db, err := sqlx.Connect(config.Driver, config.DataSourceName)
-	if err != nil {
-		return nil, err
-	}
-
 	return &dbAuth{
-		db: db,
+		config: config,
 	}, nil
 }
 
 func (d *dbAuth) Authenticate(account string, password PasswordString) (bool, error) {
+	db, err := sqlx.Connect(d.config.Driver, d.config.DataSourceName)
+	if err != nil {
+		return false, err
+	}
+
 	var user User
-	if err := d.db.Get(&user, "SELECT * FROM users where account=$1", account); err != nil {
+	if err := db.Get(&user, "SELECT * FROM users where account=$1", account); err != nil {
 		return false, err
 	}
 
@@ -58,14 +58,13 @@ func (d *dbAuth) Authenticate(account string, password PasswordString) (bool, er
 		return false, nil
 	}
 
+	if err := db.Close(); err != nil {
+		glog.Errorf("error closing db: %v", err)
+	}
 	return true, nil
 }
 
-func (d *dbAuth) Stop() {
-	if err := d.db.Close(); err != nil {
-		glog.Errorf("error closing db: %v", err)
-	}
-}
+func (d *dbAuth) Stop() {}
 
 func (d *dbAuth) Name() string {
 	return "db_auth"
