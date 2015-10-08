@@ -37,10 +37,8 @@ type User struct {
 	Password string `db:"password"`
 }
 
-func NewDBAuth(config *DBAuthConfig) (*dbAuth, error) {
-	return &dbAuth{
-		config: config,
-	}, nil
+func NewDBAuth(config *DBAuthConfig) *dbAuth {
+	return &dbAuth{config: config}
 }
 
 func (d *dbAuth) Authenticate(account string, password PasswordString) (bool, error) {

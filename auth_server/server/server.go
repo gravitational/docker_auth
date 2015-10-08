@@ -51,13 +51,16 @@ type AuthServer struct {
 }
 
 func NewAuthServer(c *Config) (*AuthServer, error) {
-	as := &AuthServer{
-		config:      c,
-		authorizers: []authz.Authorizer{authz.NewACLAuthorizer(c.ACL)},
+	as := &AuthServer{config: c}
+
+	if c.ACL != nil {
+		as.authorizers = append(as.authorizers, authz.NewACLAuthorizer(c.ACL))
 	}
+
 	if c.Users != nil {
 		as.authenticators = append(as.authenticators, authn.NewStaticUserAuth(c.Users))
 	}
+
 	if c.GoogleAuth != nil {
 		ga, err := authn.NewGoogleAuth(c.GoogleAuth)
 		if err != nil {
@@ -66,13 +69,12 @@ func NewAuthServer(c *Config) (*AuthServer, error) {
 		as.authenticators = append(as.authenticators, ga)
 		as.ga = ga
 	}
+
 	if c.DBAuth != nil {
-		da, err := authn.NewDBAuth(c.DBAuth)
-		if err != nil {
-			return nil, err
-		}
-		as.authenticators = append(as.authenticators, da)
+		as.authenticators = append(as.authenticators, authn.NewDBAuth(c.DBAuth))
+		as.authorizers = append(as.authorizers, authz.NewDBAuth(c.DBAuth))
 	}
+
 	return as, nil
 }
 

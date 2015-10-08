@@ -71,7 +71,7 @@ func validate(c *Config) error {
 	}
 
 	if c.Users == nil && c.GoogleAuth == nil && c.DBAuth == nil {
-		return errors.New("No auth methods are configured, this is probably a mistake. Use an empty user map if you really want to deny everyone.")
+		return errors.New("no auth methods are configured, this is probably a mistake. Use an empty user map if you really want to deny everyone.")
 	}
 	if gac := c.GoogleAuth; gac != nil {
 		if gac.ClientSecretFile != "" {
@@ -88,8 +88,8 @@ func validate(c *Config) error {
 			gac.HTTPTimeout = 10
 		}
 	}
-	if c.ACL == nil {
-		return errors.New("ACL is empty, this is probably a mistake. Use an empty list if you really want to deny all actions.")
+	if c.ACL == nil && c.DBAuth == nil {
+		return errors.New("no acl is given, this is probably a mistake. Use an empty list if you really want to deny all actions.")
 	}
 	return nil
 }
