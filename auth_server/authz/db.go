@@ -2,7 +2,12 @@ package authz
 
 import (
 	"github.com/cesanta/docker_auth/auth_server/authn"
+	"github.com/golang/glog"
 	"github.com/jmoiron/sqlx"
+)
+
+var (
+	log = glog.V(2)
 )
 
 type dbAuthorizer struct {
@@ -27,7 +32,7 @@ func (d *dbAuthorizer) Authorize(ai *AuthRequestInfo) ([]string, error) {
 	}
 
 	matchedEntry := Acl{}
-	if db.Get(&matchedEntry, "SELECT * FROM acls where $1 SIMILAR TO account AND $2 SIMILAR TO type AND $3 SIMILAR TO name", ai.Account, ai.Type, ai.Name); err != nil {
+	if err := db.Get(&matchedEntry, "SELECT * FROM acls where $1 ~ account AND $2 ~ type AND $3 ~ name", ai.Account, ai.Type, ai.Name); err != nil {
 		return nil, err
 	}
 

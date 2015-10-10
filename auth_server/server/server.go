@@ -203,6 +203,16 @@ func (as *AuthServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		as.doAuth(rw, req)
 	case req.URL.Path == "/google_auth" && as.ga != nil:
 		as.ga.DoGoogleAuth(rw, req)
+	case req.URL.Path == "/create_user":
+		as.createUser(rw, req)
+	case req.URL.Path == "/remove_user":
+		as.removeUser(rw, req)
+	case req.URL.Path == "/create_acl":
+		as.createACL(rw, req)
+	case req.URL.Path == "/list_acl":
+		as.listACL(rw, req)
+	case req.URL.Path == "/remove_acl":
+		as.removeACL(rw, req)
 	default:
 		http.Error(rw, "Not found", http.StatusNotFound)
 		return
@@ -259,6 +269,21 @@ func (as *AuthServer) doAuth(rw http.ResponseWriter, req *http.Request) {
 	glog.V(2).Infof("%s", result)
 	rw.Header().Set("Content-Type", "application/json")
 	rw.Write(result)
+}
+
+func (as *AuthServer) createUser(rw http.ResponseWriter, req *http.Request) {
+}
+
+func (as *AuthServer) removeUser(rw http.ResponseWriter, req *http.Request) {
+}
+
+func (as *AuthServer) createACL(rw http.ResponseWriter, req *http.Request) {
+}
+
+func (as *AuthServer) listACL(rw http.ResponseWriter, req *http.Request) {
+}
+
+func (as *AuthServer) removeACL(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (as *AuthServer) Stop() {
