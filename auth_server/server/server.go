@@ -30,6 +30,7 @@ import (
 	"github.com/cesanta/docker_auth/auth_server/authz"
 	"github.com/docker/distribution/registry/auth/token"
 	"github.com/golang/glog"
+	"github.com/jmoiron/sqlx"
 )
 
 type AuthRequest struct {
@@ -271,10 +272,68 @@ func (as *AuthServer) doAuth(rw http.ResponseWriter, req *http.Request) {
 	rw.Write(result)
 }
 
+func (as *AuthServer) getDBConnection(rw http.ResponseWriter, req *http.Request) *sqlx.DB {
+	if as.config.DBAuth == nil {
+		http.Error(rw, "The server is not configured with a DB backend", http.StatusInternalServerError)
+		return nil
+	}
+
+	db, err := sqlx.Connect(as.config.DBAuth.Driver, as.config.DBAuth.DataSourceName)
+	if err != nil {
+		glog.Errorf("Error connecting to database: %v", err)
+		http.Error(rw, "Error connecting to database", http.StatusInternalServerError)
+		return nil
+	}
+
+	return db
+}
+
+func httpOK(rw http.ResponseWriter) {
+	rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	fmt.Fprintln(rw, "ok")
+}
+
 func (as *AuthServer) createUser(rw http.ResponseWriter, req *http.Request) {
+	db := as.getDBConnection(rw, req)
+	if db == nil {
+		return
+	}
+
+	account := req.FormValue("account")
+	password := req.FormValue("password")
+	if account == "" || password == "" {
+		http.Error(rw, "Empty account or password", http.StatusBadRequest)
+		return
+	}
+
+	_, err := db.Exec("INSERT INTO users (account, password) VALUES ($1, $2)", account, password)
+	if err != nil {
+		http.Error(rw, fmt.Sprintf("Database error: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	httpOK(rw)
 }
 
 func (as *AuthServer) removeUser(rw http.ResponseWriter, req *http.Request) {
+	db := as.getDBConnection(rw, req)
+	if db == nil {
+		return
+	}
+
+	account := req.FormValue("account")
+	if account == "" {
+		http.Error(rw, "Empty account", http.StatusBadRequest)
+		return
+	}
+
+	_, err := db.Exec("DELETE FROM users where account=$1", account)
+	if err != nil {
+		http.Error(rw, fmt.Sprintf("Database error: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	httpOK(rw)
 }
 
 func (as *AuthServer) createACL(rw http.ResponseWriter, req *http.Request) {
