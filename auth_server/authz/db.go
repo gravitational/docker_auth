@@ -15,10 +15,10 @@ type dbAuthorizer struct {
 }
 
 type Acl struct {
-	Account string   `db:"account"`
-	Type    string   `db:"type"`
-	Name    string   `db:"name"`
-	Actions []string `db:"actions"`
+	Account string `db:"account"`
+	Type    string `db:"type"`
+	Name    string `db:"name"`
+	Actions string `db:"actions"`
 }
 
 func NewDBAuth(config *authn.DBAuthConfig) *dbAuthorizer {
@@ -36,11 +36,14 @@ func (d *dbAuthorizer) Authorize(ai *AuthRequestInfo) ([]string, error) {
 		return nil, err
 	}
 
-	if len(matchedEntry.Actions) == 1 && (matchedEntry.Actions)[0] == "*" {
-		return ai.Actions, nil
-	}
+	println(matchedEntry.Actions)
 
-	return StringSetIntersection(ai.Actions, matchedEntry.Actions), nil
+	//if len(matchedEntry.Actions) == 1 && (matchedEntry.Actions)[0] == "*" {
+	//return ai.Actions, nil
+	//}
+
+	//return StringSetIntersection(ai.Actions, matchedEntry.Actions), nil
+	return nil, nil
 }
 
 func (d *dbAuthorizer) Stop() {}
