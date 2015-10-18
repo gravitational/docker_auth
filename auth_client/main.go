@@ -1,18 +1,20 @@
 package main
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
 	app        = kingpin.New("auth-client", "CLI client for interacting with the auth server")
+	insecure   = app.Flag("insecure", "Skip certificate checks").Bool()
 	serverAddr = app.Flag("addr", "address of the auth server").Default("https://auth.gravitational.io").Short('a').URL()
 
 	ccreateUser         = app.Command("create-user", "Create a new user")
@@ -21,7 +23,8 @@ var (
 )
 
 type client struct {
-	addr *url.URL // address of the server
+	client *http.Client
+	addr   *url.URL // address of the server
 }
 
 func main() {
@@ -33,6 +36,15 @@ func main() {
 
 	c := client{
 		addr: *serverAddr,
+	}
+
+	if *insecure {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		c.client = &http.Client{Transport: tr}
+	} else {
+		c.client = &http.Client{}
 	}
 
 	switch cmd {
@@ -52,7 +64,7 @@ func (c *client) createUser(username string, password string) error {
 		return errors.New("either username or password was empty")
 	}
 
-	_, err := http.PostForm(path.Join(c.addr.String(), "create_user"), url.Values{
+	resp, err := c.client.PostForm(c.addr.String()+"/create_user", url.Values{
 		"account":  {username},
 		"password": {password},
 	})
@@ -61,6 +73,11 @@ func (c *client) createUser(username string, password string) error {
 		return err
 	}
 
-	fmt.Printf("User %s was successfully created.", username)
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf(string(body))
 	return nil
 }

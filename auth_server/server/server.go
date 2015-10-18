@@ -32,6 +32,7 @@ import (
 	"github.com/docker/distribution/registry/auth/token"
 	"github.com/golang/glog"
 	"github.com/jmoiron/sqlx"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthRequest struct {
@@ -286,6 +287,7 @@ func (as *AuthServer) getDBConnection(rw http.ResponseWriter, req *http.Request)
 		return nil
 	}
 
+	glog.Infof("Successfully obtained DB connection")
 	return db
 }
 
@@ -307,16 +309,27 @@ func (as *AuthServer) createUser(rw http.ResponseWriter, req *http.Request) {
 	account := req.FormValue("account")
 	password := req.FormValue("password")
 	if account == "" || password == "" {
+		glog.Infof("Empty username or password")
 		http.Error(rw, "Empty account or password", http.StatusBadRequest)
 		return
 	}
 
-	_, err := conn.Exec("INSERT INTO users (account, password) VALUES ($1, $2)", account, password)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
+		glog.Infof("Error hashing password: %v", password)
+		http.Error(rw, "Error hashing password", http.StatusBadRequest)
+		return
+	}
+
+	_, err = conn.Exec("INSERT INTO users (account, password) VALUES ($1, $2)", account, hashedPassword)
+	if err != nil {
+		glog.Infof("Failed to create a new user")
 		httpDBError(rw, err)
 	} else {
+		glog.Infof("Successfully created a new user")
 		httpOK(rw)
 	}
+
 }
 
 func (as *AuthServer) removeUser(rw http.ResponseWriter, req *http.Request) {
