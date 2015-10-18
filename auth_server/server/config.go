@@ -26,6 +26,7 @@ import (
 
 	"github.com/cesanta/docker_auth/auth_server/authn"
 	"github.com/cesanta/docker_auth/auth_server/authz"
+	"github.com/cesanta/docker_auth/auth_server/db"
 	"github.com/docker/libtrust"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -35,7 +36,7 @@ type Config struct {
 	Token      TokenConfig                    `yaml:"token"`
 	Users      map[string]*authn.Requirements `yaml:"users,omitempty"`
 	GoogleAuth *authn.GoogleAuthConfig        `yaml:"google_auth,omitempty"`
-	DBAuth     *authn.DBAuthConfig            `yaml:"db_auth,omitempty"`
+	DBAuth     *db.DBAuthConfig               `yaml:"db_auth,omitempty"`
 	ACL        authz.ACL                      `yaml:"acl"`
 }
 

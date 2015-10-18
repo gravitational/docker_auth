@@ -17,38 +17,29 @@
 package authn
 
 import (
+	"github.com/cesanta/docker_auth/auth_server/db"
 	"github.com/golang/glog"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type DBAuthConfig struct {
-	Driver         string `yaml:"driver,omitempty"`
-	DataSourceName string `yaml:"data_source_name,omitempty"`
-}
-
 type dbAuth struct {
-	config *DBAuthConfig
+	config *db.DBAuthConfig
 }
 
-type User struct {
-	Account  string `db:"account"`
-	Password string `db:"password"`
-}
-
-func NewDBAuth(config *DBAuthConfig) *dbAuth {
+func NewDBAuth(config *db.DBAuthConfig) *dbAuth {
 	return &dbAuth{config: config}
 }
 
 func (d *dbAuth) Authenticate(account string, password PasswordString) (bool, error) {
-	db, err := sqlx.Connect(d.config.Driver, d.config.DataSourceName)
+	conn, err := sqlx.Connect(d.config.Driver, d.config.DataSourceName)
 	if err != nil {
 		return false, err
 	}
 
-	var user User
-	if err := db.Get(&user, "SELECT * FROM users where account=$1", account); err != nil {
+	var user db.User
+	if err := conn.Get(&user, "SELECT * FROM users where account=$1", account); err != nil {
 		return false, err
 	}
 
@@ -56,7 +47,7 @@ func (d *dbAuth) Authenticate(account string, password PasswordString) (bool, er
 		return false, nil
 	}
 
-	if err := db.Close(); err != nil {
+	if err := conn.Close(); err != nil {
 		glog.Errorf("error closing db: %v", err)
 	}
 	return true, nil

@@ -28,6 +28,7 @@ import (
 
 	"github.com/cesanta/docker_auth/auth_server/authn"
 	"github.com/cesanta/docker_auth/auth_server/authz"
+	"github.com/cesanta/docker_auth/auth_server/db"
 	"github.com/docker/distribution/registry/auth/token"
 	"github.com/golang/glog"
 	"github.com/jmoiron/sqlx"
@@ -293,9 +294,13 @@ func httpOK(rw http.ResponseWriter) {
 	fmt.Fprintln(rw, "ok")
 }
 
+func httpDBError(rw http.ResponseWriter, err error) {
+	http.Error(rw, fmt.Sprintf("Database error: %v", err), http.StatusBadRequest)
+}
+
 func (as *AuthServer) createUser(rw http.ResponseWriter, req *http.Request) {
-	db := as.getDBConnection(rw, req)
-	if db == nil {
+	conn := as.getDBConnection(rw, req)
+	if conn == nil {
 		return
 	}
 
@@ -306,18 +311,17 @@ func (as *AuthServer) createUser(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	_, err := db.Exec("INSERT INTO users (account, password) VALUES ($1, $2)", account, password)
+	_, err := conn.Exec("INSERT INTO users (account, password) VALUES ($1, $2)", account, password)
 	if err != nil {
-		http.Error(rw, fmt.Sprintf("Database error: %v", err), http.StatusBadRequest)
-		return
+		httpDBError(rw, err)
+	} else {
+		httpOK(rw)
 	}
-
-	httpOK(rw)
 }
 
 func (as *AuthServer) removeUser(rw http.ResponseWriter, req *http.Request) {
-	db := as.getDBConnection(rw, req)
-	if db == nil {
+	conn := as.getDBConnection(rw, req)
+	if conn == nil {
 		return
 	}
 
@@ -327,22 +331,62 @@ func (as *AuthServer) removeUser(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	_, err := db.Exec("DELETE FROM users where account=$1", account)
+	_, err := conn.Exec("DELETE FROM users where account=$1", account)
 	if err != nil {
-		http.Error(rw, fmt.Sprintf("Database error: %v", err), http.StatusBadRequest)
-		return
+		httpDBError(rw, err)
+	} else {
+		httpOK(rw)
 	}
-
-	httpOK(rw)
 }
 
 func (as *AuthServer) createACL(rw http.ResponseWriter, req *http.Request) {
+	conn := as.getDBConnection(rw, req)
+	if conn == nil {
+		return
+	}
+
+	account := req.FormValue("account")
+	typ := req.FormValue("type")
+	name := req.FormValue("name")
+	actions := req.FormValue("actions")
+
+	_, err := conn.Exec("INSERT INTO acls (account, type, name, actions) VALUES ($1, $2, $3, $4)", account, typ, name, actions)
+	if err != nil {
+		httpDBError(rw, err)
+	} else {
+		httpOK(rw)
+	}
 }
 
 func (as *AuthServer) listACL(rw http.ResponseWriter, req *http.Request) {
+	conn := as.getDBConnection(rw, req)
+	if conn == nil {
+		return
+	}
+
+	acls := []db.Acl{}
+	if err := conn.Select(&acls, "SELECT * FROM acls"); err != nil {
+		httpDBError(rw, err)
+		return
+	}
+
+	b, err := json.Marshal(acls)
+	if err != nil {
+		glog.Errorf("error marshalling acls to json: %v", err)
+		http.Error(rw, "internal error", http.StatusBadRequest)
+		return
+	}
+
+	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+	fmt.Fprintln(rw, string(b))
 }
 
 func (as *AuthServer) removeACL(rw http.ResponseWriter, req *http.Request) {
+	conn := as.getDBConnection(rw, req)
+	if conn == nil {
+		return
+	}
+	// TODO
 }
 
 func (as *AuthServer) Stop() {

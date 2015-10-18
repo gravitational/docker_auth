@@ -3,7 +3,7 @@ package authz
 import (
 	"strings"
 
-	"github.com/cesanta/docker_auth/auth_server/authn"
+	"github.com/cesanta/docker_auth/auth_server/db"
 	"github.com/golang/glog"
 	"github.com/jmoiron/sqlx"
 )
@@ -13,31 +13,21 @@ var (
 )
 
 type dbAuthorizer struct {
-	config *authn.DBAuthConfig
+	config *db.DBAuthConfig
 }
 
-type Acl struct {
-	Account string `db:"account"`
-	Type    string `db:"type"`
-	Name    string `db:"name"`
-	// I would like Actions to be a list of strings, but it appears that there is
-	// some bug in the DB driver the causes improper deserialization if []string
-	// is used.  So Actions will be a string like "{pull, push}"
-	Actions string `db:"actions"`
-}
-
-func NewDBAuth(config *authn.DBAuthConfig) *dbAuthorizer {
+func NewDBAuth(config *db.DBAuthConfig) *dbAuthorizer {
 	return &dbAuthorizer{config: config}
 }
 
 func (d *dbAuthorizer) Authorize(ai *AuthRequestInfo) ([]string, error) {
-	db, err := sqlx.Connect(d.config.Driver, d.config.DataSourceName)
+	conn, err := sqlx.Connect(d.config.Driver, d.config.DataSourceName)
 	if err != nil {
 		return nil, err
 	}
 
-	matchedEntry := Acl{}
-	if err := db.Get(&matchedEntry, "SELECT * FROM acls where $1 ~ account AND $2 ~ type AND $3 ~ name", ai.Account, ai.Type, ai.Name); err != nil {
+	matchedEntry := db.Acl{}
+	if err := conn.Get(&matchedEntry, "SELECT * FROM acls where $1 ~ account AND $2 ~ type AND $3 ~ name", ai.Account, ai.Type, ai.Name); err != nil {
 		return nil, err
 	}
 
