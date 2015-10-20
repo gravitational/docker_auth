@@ -8,6 +8,7 @@ type User struct {
 }
 
 type Acl struct {
+	ID      uint64 `db:"id"`
 	Account string `db:"account"`
 	Type    string `db:"type"`
 	Name    string `db:"name"`

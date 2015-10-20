@@ -428,7 +428,19 @@ func (as *AuthServer) removeACL(rw http.ResponseWriter, req *http.Request) {
 	if conn == nil {
 		return
 	}
-	// TODO
+
+	ID := req.FormValue("ID")
+	if ID == "" {
+		http.Error(rw, "Empty ID", http.StatusBadRequest)
+		return
+	}
+
+	_, err := conn.Exec("DELETE FROM acls where ID=$1", ID)
+	if err != nil {
+		httpDBError(rw, err)
+	} else {
+		httpOK(rw)
+	}
 }
 
 func (as *AuthServer) Stop() {

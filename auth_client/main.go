@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
+	"strings"
 
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -25,6 +27,17 @@ var (
 
 	cremoveUser         = app.Command("remove-user", "Remove a user")
 	cremoveUserUsername = cremoveUser.Arg("username", "Username of the user being removed").Required().String()
+
+	ccreateACL        = app.Command("create-acl", "Create a new ACL")
+	ccreateACLAccount = ccreateACL.Flag("username", "Username of the user that this ACL is for").Short('u').Required().String()
+	ccreateACLType    = ccreateACL.Flag("type", "Type of the ACL").Short('t').Required().String()
+	ccreateACLName    = ccreateACL.Flag("name", "Name of the repo").Short('n').Required().String()
+	ccreateACLActions = ccreateACL.Flag("actions", "Actions that the user can apply to the repo").Required().Strings()
+
+	clistACL = app.Command("list-acl", "List all ACLs")
+
+	cremoveACL   = app.Command("remove-acl", "Remove a ACL")
+	cremoveACLID = cremoveACL.Arg("ID", "Username of the user being removed").Required().Int()
 )
 
 type client struct {
@@ -59,6 +72,12 @@ func main() {
 		err = c.listUser()
 	case cremoveUser.FullCommand():
 		err = c.removeUser(*cremoveUserUsername)
+	case ccreateACL.FullCommand():
+		err = c.createACL(*ccreateACLAccount, *ccreateACLType, *ccreateACLName, *ccreateACLActions)
+	case clistACL.FullCommand():
+		err = c.listACL()
+	case cremoveACL.FullCommand():
+		err = c.removeACL(*cremoveACLID)
 	}
 
 	if err != nil {
@@ -110,6 +129,40 @@ func (c *client) removeUser(username string) error {
 
 	resp, err := c.client.PostForm(c.addr.String()+"/remove_user", url.Values{
 		"account": {username},
+	})
+	if err != nil {
+		return err
+	}
+
+	return printResp(resp)
+}
+
+func (c *client) createACL(account string, typ string, name string, actions []string) error {
+	resp, err := c.client.PostForm(c.addr.String()+"/create_acl", url.Values{
+		"account": {account},
+		"type":    {typ},
+		"name":    {name},
+		"actions": {fmt.Sprintf("{%s}", strings.Join(actions, ","))},
+	})
+	if err != nil {
+		return err
+	}
+
+	return printResp(resp)
+}
+
+func (c *client) listACL() error {
+	resp, err := c.client.Get(c.addr.String() + "/list_acl")
+	if err != nil {
+		return err
+	}
+
+	return printResp(resp)
+}
+
+func (c *client) removeACL(ID int) error {
+	resp, err := c.client.PostForm(c.addr.String()+"/remove_acl", url.Values{
+		"ID": {strconv.Itoa(ID)},
 	})
 	if err != nil {
 		return err
