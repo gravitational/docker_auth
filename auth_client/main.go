@@ -18,8 +18,13 @@ var (
 	serverAddr = app.Flag("addr", "address of the auth server").Default("https://auth.gravitational.io").Short('a').URL()
 
 	ccreateUser         = app.Command("create-user", "Create a new user")
-	ccreateUserUsername = ccreateUser.Flag("username", "Username of the user being created").Required().OverrideDefaultFromEnvar("AUTH_USERNAME").String()
-	ccreateUserPassword = ccreateUser.Flag("password", "Password of the user being created").Required().OverrideDefaultFromEnvar("AUTH_PASSWORD").String()
+	ccreateUserUsername = ccreateUser.Flag("username", "Username of the user being created").Short('u').Required().OverrideDefaultFromEnvar("AUTH_USERNAME").String()
+	ccreateUserPassword = ccreateUser.Flag("password", "Password of the user being created").Short('p').Required().OverrideDefaultFromEnvar("AUTH_PASSWORD").String()
+
+	clistUser = app.Command("list-user", "List all users")
+
+	cremoveUser         = app.Command("remove-user", "Remove a user")
+	cremoveUserUsername = cremoveUser.Arg("username", "Username of the user being removed").Required().String()
 )
 
 type client struct {
@@ -50,12 +55,26 @@ func main() {
 	switch cmd {
 	case ccreateUser.FullCommand():
 		err = c.createUser(*ccreateUserUsername, *ccreateUserPassword)
+	case clistUser.FullCommand():
+		err = c.listUser()
+	case cremoveUser.FullCommand():
+		err = c.removeUser(*cremoveUserUsername)
 	}
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "auth-client error: %v\n", err)
 		os.Exit(-1)
 	}
+}
+
+func printResp(resp *http.Response) error {
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf(string(body))
+	return nil
 }
 
 func (c *client) createUser(username string, password string) error {
@@ -68,16 +87,33 @@ func (c *client) createUser(username string, password string) error {
 		"account":  {username},
 		"password": {password},
 	})
-
 	if err != nil {
 		return err
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	return printResp(resp)
+}
+
+func (c *client) listUser() error {
+	resp, err := c.client.Get(c.addr.String() + "/list_user")
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf(string(body))
-	return nil
+	return printResp(resp)
+}
+
+func (c *client) removeUser(username string) error {
+	if username == "" {
+		return errors.New("username was empty")
+	}
+
+	resp, err := c.client.PostForm(c.addr.String()+"/remove_user", url.Values{
+		"account": {username},
+	})
+	if err != nil {
+		return err
+	}
+
+	return printResp(resp)
 }

@@ -208,6 +208,8 @@ func (as *AuthServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		as.ga.DoGoogleAuth(rw, req)
 	case req.URL.Path == "/create_user":
 		as.createUser(rw, req)
+	case req.URL.Path == "/list_user":
+		as.listUser(rw, req)
 	case req.URL.Path == "/remove_user":
 		as.removeUser(rw, req)
 	case req.URL.Path == "/create_acl":
@@ -329,7 +331,34 @@ func (as *AuthServer) createUser(rw http.ResponseWriter, req *http.Request) {
 		glog.Infof("Successfully created a new user")
 		httpOK(rw)
 	}
+}
 
+func (as *AuthServer) listUser(rw http.ResponseWriter, req *http.Request) {
+	conn := as.getDBConnection(rw, req)
+	if conn == nil {
+		return
+	}
+
+	users := []db.User{}
+	if err := conn.Select(&users, "SELECT account FROM users "); err != nil {
+		httpDBError(rw, err)
+		return
+	}
+
+	var accounts []string
+	for _, u := range users {
+		accounts = append(accounts, u.Account)
+	}
+
+	b, err := json.Marshal(accounts)
+	if err != nil {
+		glog.Errorf("error marshalling accounts to json: %v", err)
+		http.Error(rw, "internal error", http.StatusBadRequest)
+		return
+	}
+
+	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+	fmt.Fprintln(rw, string(b))
 }
 
 func (as *AuthServer) removeUser(rw http.ResponseWriter, req *http.Request) {
