@@ -5,12 +5,7 @@ import (
 	"strings"
 
 	"github.com/cesanta/docker_auth/auth_server/db"
-	"github.com/golang/glog"
 	"github.com/jmoiron/sqlx"
-)
-
-var (
-	log = glog.V(2)
 )
 
 type dbAuthorizer struct {
