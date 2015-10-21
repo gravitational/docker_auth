@@ -1,6 +1,7 @@
 package authz
 
 import (
+	"database/sql"
 	"strings"
 
 	"github.com/cesanta/docker_auth/auth_server/db"
@@ -28,7 +29,11 @@ func (d *dbAuthorizer) Authorize(ai *AuthRequestInfo) ([]string, error) {
 
 	matchedEntry := db.Acl{}
 	if err := conn.Get(&matchedEntry, "SELECT * FROM acls where $1 ~ account AND $2 ~ type AND $3 ~ name", ai.Account, ai.Type, ai.Name); err != nil {
-		return nil, err
+		if err != sql.ErrNoRows {
+			return nil, err
+		} else {
+			return nil, NoMatch
+		}
 	}
 
 	// Get rid of the leading and trailing brackets

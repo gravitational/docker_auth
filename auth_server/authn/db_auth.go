@@ -17,6 +17,8 @@
 package authn
 
 import (
+	"database/sql"
+
 	"github.com/cesanta/docker_auth/auth_server/db"
 	"github.com/golang/glog"
 	"github.com/jmoiron/sqlx"
@@ -40,7 +42,11 @@ func (d *dbAuth) Authenticate(account string, password PasswordString) (bool, er
 
 	var user db.User
 	if err := conn.Get(&user, "SELECT * FROM users where account=$1", account); err != nil {
-		return false, err
+		if err != sql.ErrNoRows {
+			return false, err
+		} else {
+			return false, NoMatch
+		}
 	}
 
 	if bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)) != nil {
